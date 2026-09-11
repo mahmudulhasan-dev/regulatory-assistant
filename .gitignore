@@ -1,0 +1,16 @@
+# Virtual environment
+venv/
+
+# Derived/build artifacts
+data/processed/
+
+# Python
+__pycache__/
+*.pyc
+
+# Env vars
+.env
+
+# OS cruft
+.DS_Store
+Thumbs.db
