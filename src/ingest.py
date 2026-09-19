@@ -91,8 +91,13 @@ DOCS = [
 # Fix for the NIST "Part 2:" style rule accidentally double-escaped above -
 # defined cleanly here and used directly.
 PART_RULE = HeadingRule(re.compile(r"Part\s+\d+:\s*(?P<title>.+)"), "same_line")
+SUBSECTION_RULE = HeadingRule(
+    re.compile(r"(?P<label>\d+\.\d+(?:\.\d+)?)"),
+    "next_line",
+)
 DOCS[0]["heading_rules"] = [
     PART_RULE,
+    SUBSECTION_RULE,
     HeadingRule(re.compile(r"(?P<label>\d+\.)"), "next_line"),
 ]
 
