@@ -62,7 +62,19 @@ DOCS = [
         "doc_id": "nist_genai_profile",
         "path": "data/raw/nist_genai_profile_600-1.pdf",
         "title": "NIST Generative AI Profile (600-1)",
-        "heading_rules": [],  # not yet confirmed - fixed-size fallback only
+        "heading_rules": [
+            HeadingRule(re.compile(r"(?P<label>\d+\.)"), "next_line"),
+            HeadingRule(
+                re.compile(
+                    r"(?P<label>(?:GOVERN|MAP|MEASURE|MANAGE)\s+\d+\.\d+):\s*(?P<title>.+)"
+                ),
+                "same_line",
+            ),
+            HeadingRule(
+                re.compile(r"[A-Z]{2,3}-\d+\.\d+-\d{3}"),
+                "code_only",
+            ),
+        ],
     },
     {
         "doc_id": "eu_ai_act",
@@ -189,6 +201,9 @@ def detect_headings(
             if rule.mode == "same_line":
                 title = m.group("title")
                 body_start = i + 1
+            elif rule.mode == "code_only":
+                title = None
+                body_start = i + 1
             else:
                 title = None
                 body_start = i + 1
@@ -202,6 +217,7 @@ def detect_headings(
                 "label": label,
                 "title": title,
                 "page": page,
+                "start_idx": i,
                 "body_start": body_start,
             })
             break  # first matching rule wins; don't double-count a line
@@ -212,42 +228,17 @@ def detect_headings(
 def build_sections(
     lines: list[tuple[str, int]], headings: list[dict]
 ) -> list[dict]:
-    """Slice the document into (start, end, label, page) sections using
-    each heading's line position as a boundary and its body_start as
-    where that section's own text begins (skipping the heading's label
-    line, and title line if one was consumed)."""
+    """Slice the document into sections using each heading's recorded
++    line position directly - no re-scanning needed."""
     sections = []
     prev_start = 0
     prev_label = None
     prev_page = lines[0][1] if lines else 1
 
-    heading_line_indices = {
-        i for i, (line, _p) in enumerate(lines)
-        for h in headings if False  # placeholder, replaced below
-    }
-
-    # Recompute heading line indices properly (we need the index each
-    # heading was found at, not just its body_start).
-    idx_by_heading = []
-    scan_pos = 0
     for h in headings:
-        # body_start - 1 (or -2) tells us where the heading line itself was;
-        # since headings are produced in document order and non-overlapping,
-        # walk forward to find it precisely.
-        while scan_pos < len(lines):
-            if lines[scan_pos][1] == h["page"] and (
-                lines[scan_pos][0] == h["label"]
-                or lines[scan_pos][0].rstrip(".") == h["label"].rstrip(".")
-            ):
-                break
-            scan_pos += 1
-        idx_by_heading.append(scan_pos)
-        scan_pos += 1
-
-    for heading_idx, h in zip(idx_by_heading, headings):
         sections.append({
             "start": prev_start,
-            "end": heading_idx,
+            "end": h["start_idx"],
             "label": prev_label,
             "page": prev_page,
         })
