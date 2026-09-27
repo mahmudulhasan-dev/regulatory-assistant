@@ -7,6 +7,7 @@ chunker's output without reading all 1200+ lines by hand.
 """
 
 import json
+import sys
 import statistics
 from collections import defaultdict
 from pathlib import Path
@@ -15,7 +16,34 @@ CHUNKS_PATH = Path("data/processed/chunks.jsonl")
 SAMPLES_PER_DOC = 4
 
 
+def show_all(doc_id: str, page: int) -> None:
+    """Print every chunk matching a given doc_id and/or page, in full -
+    not a sample. Pass doc_id='' or page=None to leave that filter off."""
+    with CHUNKS_PATH.open(encoding="utf-8") as f:
+        for line in f:
+            c = json.loads(line)
+            if doc_id and c["doc_id"] != doc_id:
+                continue
+            if page is not None and c["page"] != page:
+                continue
+            print(f"\n[{c['chunk_index']}] {c['doc_id']}  page {c['page']}  "
+                  f"label={c['section_label']!r}")
+            print(c["text"])
+            print("-" * 70)
+
+
 def main() -> None:
+    if len(sys.argv) > 1 and sys.argv[1] == "--find":
+        doc_id = ""
+        page = None
+        for arg in sys.argv[2:]:
+            if arg.startswith("doc="):
+                doc_id = arg.split("=", 1)[1]
+            elif arg.startswith("page="):
+                page = int(arg.split("=", 1)[1])
+        show_all(doc_id, page)
+        return
+
     by_doc: dict[str, list[dict]] = defaultdict(list)
     with CHUNKS_PATH.open(encoding="utf-8") as f:
         for line in f:
