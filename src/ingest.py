@@ -37,15 +37,37 @@ class HeadingRule:
 
 
 # ---------------------------------------------------------------------------
+# Shared rules and patterns, defined before DOCS so every entry below can
+# reference them directly - no forward references, no post-hoc patching.
+# ---------------------------------------------------------------------------
+
+PART_RULE = HeadingRule(re.compile(r"Part\s+\d+:\s*(?P<title>.+)"), "same_line")
+
+PARAGRAPH_SPLIT_PATTERN = re.compile(r"^(?P<label>\d{1,3})\.\s+(?=[A-Z])")
+
+WORDS_PER_CHUNK = 300
+OVERLAP_WORDS = 50
+MIN_BOILERPLATE_PAGE_FRACTION = 0.4   # a line must repeat on >=40% of pages
+MAX_BOILERPLATE_LINE_LENGTH = 80      # headers/footers are short lines
+
+PAGE_NUMBER_LINE = re.compile(r"^(Page\s+)?\d{1,4}(/\d{1,4})?$", re.IGNORECASE)
+
+
+# ---------------------------------------------------------------------------
 # One entry per source document. `heading_rules` is empty for documents we
 # haven't inspected closely yet - they get the fixed-size fallback
 # everywhere until we look at their structure and add real rules.
 #
-# NOTE (known v1 limitation): NIST rules only catch "Part N" and bare
-# top-level "N." section numbers, confirmed present in body text. We have
-# NOT confirmed how "5.1"-style subsections look in body text (only seen
-# in the Table of Contents, a different layout) - so subsection-level
-# citations aren't attempted yet.
+# NOTE (known v1 limitation, nist_ai_rmf): rules catch "Part N", bare
+# top-level "N.", and "N.N"/"N.N.N" subsections - all confirmed present in
+# body text via inspect_pdf.py.
+#
+# NOTE (known v1 limitation, uk_ai_whitepaper): the bare "N." paragraph-
+# marker rule assumes any single-digit-group + period + capital-letter line
+# is a numbered paragraph, not a section heading. We haven't seen every
+# page of this document - if a later top-level heading turns out to be
+# styled as e.g. "4. Some Heading" (single number, own line), it would be
+# wrongly split as a paragraph marker instead. Not yet ruled out.
 # ---------------------------------------------------------------------------
 
 DOCS = [
@@ -54,8 +76,9 @@ DOCS = [
         "path": "data/raw/nist_ai_rmf_1.0.pdf",
         "title": "NIST AI RMF 1.0",
         "heading_rules": [
-            HeadingRule(re.compile(r"Part\s+\d+:\s*(?P<title>.+)".replace(
-                "(?P<title>.+)", "(?P<title>.+)")), "same_line"),
+            PART_RULE,
+            HeadingRule(re.compile(r"(?P<label>\d+\.\d+(?:\.\d+)?)"), "next_line"),
+            HeadingRule(re.compile(r"(?P<label>\d+\.)"), "next_line"),
         ],
     },
     {
@@ -71,9 +94,7 @@ DOCS = [
                 "same_line",
             ),
             HeadingRule(
-                re.compile(r"[A-Z]{2,3}-\d+\.\d+-\d{3}"),
-                "code_only",
-            ),
+                re.compile(r"[A-Z]{2,3}-\d+\.\d+-\d{3}"), "code_only"),
         ],
     },
     {
@@ -90,7 +111,22 @@ DOCS = [
         "doc_id": "uk_ai_whitepaper",
         "path": "data/raw/uk_ai_whitepaper_2023.pdf",
         "title": "UK White Paper: A pro-innovation approach to AI regulation",
-        "heading_rules": [],  # not yet inspected - fixed-size fallback only
+        "heading_rules": [
+            PART_RULE,
+            HeadingRule(
+                re.compile(r"Annex\s+[A-Z]:\s*(?P<title>.+)"), "same_line"
+            ),
+            HeadingRule(
+                re.compile(r"(?P<label>[A-Z]\.\d+)\s+(?P<title>[A-Z].+)"),
+                "same_line",
+            ),
+            HeadingRule(
+                re.compile(r"(?P<label>\d+\.\d+(?:\.\d+)?)\s+(?P<title>[A-Z].+)"),
+                "same_line",  # number+title share a line here, unlike NIST's split-line subsections
+            ),
+            HeadingRule(re.compile(r"\d{1,3}\."), "code_only"),  # split-off paragraph marker
+        ],
+        "line_splitters": [PARAGRAPH_SPLIT_PATTERN],
     },
     {
         "doc_id": "us_ai_bill_of_rights",
@@ -99,26 +135,6 @@ DOCS = [
         "heading_rules": [],  # not yet inspected - fixed-size fallback only
     },
 ]
-
-# Fix for the NIST "Part 2:" style rule accidentally double-escaped above -
-# defined cleanly here and used directly.
-PART_RULE = HeadingRule(re.compile(r"Part\s+\d+:\s*(?P<title>.+)"), "same_line")
-SUBSECTION_RULE = HeadingRule(
-    re.compile(r"(?P<label>\d+\.\d+(?:\.\d+)?)"),
-    "next_line",
-)
-DOCS[0]["heading_rules"] = [
-    PART_RULE,
-    SUBSECTION_RULE,
-    HeadingRule(re.compile(r"(?P<label>\d+\.)"), "next_line"),
-]
-
-WORDS_PER_CHUNK = 300
-OVERLAP_WORDS = 50
-MIN_BOILERPLATE_PAGE_FRACTION = 0.4   # a line must repeat on >=40% of pages
-MAX_BOILERPLATE_LINE_LENGTH = 80      # headers/footers are short lines
-
-PAGE_NUMBER_LINE = re.compile(r"^(Page\s+)?\d{1,4}(/\d{1,4})?$", re.IGNORECASE)
 
 
 @dataclass
@@ -129,6 +145,35 @@ class Chunk:
     page: int
     chunk_index: int
     text: str
+
+
+def split_inline_markers(
+    lines: list[tuple[str, int]], splitters: list[re.Pattern]
+) -> list[tuple[str, int]]:
+    """Split off a leading numbered marker onto its own line - but only
+    when its number is strictly greater than the last one accepted.
+    Real document paragraphs only ever increase; a restarting numbered
+    list (table cells, consultation questions) resets back down and gets
+    left as ordinary body text instead."""
+    if not splitters:
+        return lines
+    result: list[tuple[str, int]] = []
+    last_num = 0
+    for line, page in lines:
+        matched = False
+        for pattern in splitters:
+            m = pattern.match(line)
+            if m and int(m.group("label")) > last_num:
+                result.append((f"{m.group('label')}.", page))
+                rest = line[m.end():].strip()
+                if rest:
+                    result.append((rest, page))
+                last_num = int(m.group("label"))
+                matched = True
+                break
+        if not matched:
+            result.append((line, page))
+    return result
 
 
 def extract_pages(pdf_path: Path) -> list[str]:
@@ -277,6 +322,7 @@ def chunk_document(doc_config: dict) -> list[Chunk]:
     pages = extract_pages(pdf_path)
     boilerplate = detect_boilerplate_lines(pages)
     lines = clean_pages_to_lines(pages, boilerplate)
+    lines = split_inline_markers(lines, doc_config.get("line_splitters", []))
 
     headings = detect_headings(lines, doc_config["heading_rules"])
     sections = build_sections(lines, headings)
