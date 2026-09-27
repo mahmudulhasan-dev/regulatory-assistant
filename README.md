@@ -90,7 +90,8 @@ structure is detected:
 | NIST AI RMF 1.0 | Section / subsection number (e.g. `3.1 Valid and Reliable`) |
 | NIST GenAI Profile | Category heading or individual Action ID (e.g. `MP-2.1-001`) |
 | EU AI Act | Article / Chapter / Annex (e.g. `Article 5 Prohibited AI practices`) |
-| UK white paper, Blueprint for an AI Bill of Rights | Page number (no structural markers detected yet) |
+| UK white paper | Part / Annex / subsection, or individual numbered paragraph (e.g. `46.`) |
+| Blueprint for an AI Bill of Rights | Page number (no structural markers detected yet) |
 
 **Headings are matched on whole lines, not searched for within a joined
 block of text.** An early version joined each page's lines into one string
@@ -119,9 +120,11 @@ cannot cite content that only exists inside an image.
 - EU AI Act recitals (the ~180 numbered "whereas" clauses before Article 1)
   aren't yet structurally detected — they currently fall into the
   fixed-size fallback rather than getting their own `Recital N` citation.
-- UK white paper and Blueprint for an AI Bill of Rights haven't been
-  inspected for internal structure yet (e.g. the UK paper's `Annex A`
-  sections); both currently cite by page number only.
+- UK white paper: a heading whose title word-wraps across two lines in
+  the source PDF (e.g. `Annex C: How to respond to this`) only captures
+  the first line's text, since heading detection reads one line at a time.
+- Blueprint for an AI Bill of Rights hasn't been inspected for internal
+  structure yet; it currently cites by page number only.
 - Section-final chunks in the GenAI Profile's Action ID tables can pick up
   a trailing `AI Actor Tasks: ...` tag from the next row's boilerplate.
   Minor noise, not incorrect information.
