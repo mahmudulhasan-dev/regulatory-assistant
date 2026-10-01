@@ -4,6 +4,9 @@ venv/
 # Derived/build artifacts
 data/processed/
 
+# Scratch files
+scratch/
+
 # Python
 __pycache__/
 *.pyc
