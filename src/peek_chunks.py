@@ -16,15 +16,19 @@ CHUNKS_PATH = Path("data/processed/chunks.jsonl")
 SAMPLES_PER_DOC = 4
 
 
-def show_all(doc_id: str, page: int) -> None:
-    """Print every chunk matching a given doc_id and/or page, in full -
-    not a sample. Pass doc_id='' or page=None to leave that filter off."""
+def show_all(doc_id: str, page: int | None, page_range: tuple[int, int] | None = None) -> None:
+    """Print every chunk matching a given doc_id and/or page (or page
+    range), in full - not a sample. Pass doc_id='' / page=None /
+    page_range=None to leave that filter off. page and page_range are
+    mutually exclusive; page_range wins if both are somehow passed."""
     with CHUNKS_PATH.open(encoding="utf-8") as f:
         for line in f:
             c = json.loads(line)
             if doc_id and c["doc_id"] != doc_id:
                 continue
-            if page is not None and c["page"] != page:
+            if page_range is not None and not (page_range[0] <= c["page"] <= page_range[1]):
+                continue
+            if page_range is None and page is not None and c["page"] != page:
                 continue
             print(f"\n[{c['chunk_index']}] {c['doc_id']}  page {c['page']}  "
                   f"label={c['section_label']!r}")
@@ -36,12 +40,16 @@ def main() -> None:
     if len(sys.argv) > 1 and sys.argv[1] == "--find":
         doc_id = ""
         page = None
+        page_range = None
         for arg in sys.argv[2:]:
             if arg.startswith("doc="):
                 doc_id = arg.split("=", 1)[1]
             elif arg.startswith("page="):
                 page = int(arg.split("=", 1)[1])
-        show_all(doc_id, page)
+            elif arg.startswith("page_range="):
+                lo, hi = arg.split("=", 1)[1].split("-")
+                page_range = (int(lo), int(hi))
+        show_all(doc_id, page, page_range)
         return
 
     by_doc: dict[str, list[dict]] = defaultdict(list)
