@@ -132,7 +132,12 @@ DOCS = [
         "doc_id": "us_ai_bill_of_rights",
         "path": "data/raw/us_ai_bill_of_rights_2022.pdf",
         "title": "Blueprint for an AI Bill of Rights",
-        "heading_rules": [],  # not yet inspected - fixed-size fallback only
+        "heading_rules": [
+            HeadingRule(
+                re.compile(r"(?P<label>[A-Z][A-Z,]*(?: [A-Z][A-Z,]*){1,}):?"),
+                "code_only",
+            ),
+        ],
     },
 ]
 
@@ -332,6 +337,12 @@ def chunk_document(doc_config: dict) -> list[Chunk]:
     for sec in sections:
         text = " ".join(line for line, _p in lines[sec["start"]:sec["end"]]).strip()
         if not text:
+            continue
+        # Guard against heading-shaped lines with no real content between
+        # them (e.g. a Table of Contents page, which is just a list of
+        # section titles) - a genuine section has more than a few words
+        # of body text; a ToC entry doesn't.
+        if sec["label"] and len(text.split()) < 5:
             continue
 
         pieces = (
