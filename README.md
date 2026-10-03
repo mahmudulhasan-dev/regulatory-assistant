@@ -122,9 +122,37 @@ almost no real content between them — without the guard, a ToC entry
 like "ENDNOTES" would produce its own near-empty, citable-looking chunk.
 
 **Known open gaps, not yet addressed:**
-- EU AI Act recitals (the ~180 numbered "whereas" clauses before Article 1)
-  aren't yet structurally detected — they currently fall into the
-  fixed-size fallback rather than getting their own `Recital N` citation.
+- **EU AI Act recitals are not structurally detected.** The ~180 numbered
+  "whereas" clauses before Article 1 (e.g. `(4) AI is a fast evolving
+  family of technologies...`) fall into the fixed-size fallback and cite
+  by page only, instead of getting their own `Recital N` label.
+
+  Investigated and deliberately deferred, not overlooked: a recital's
+  heading shape — a bare `(N)` alone on its own line, body text on the
+  next line — is structurally identical to a footnote definition (e.g.
+  `(7) Regulation (EC) No 765/2008 of the European Parliament...`), and
+  the two are interleaved on the same pages. Both numbering sequences
+  also climb monotonically through the whole document, so the
+  strictly-increasing-number check that disambiguates the UK white
+  paper's restarting paragraph lists (see `split_inline_markers` in
+  `src/ingest.py`) doesn't help here — both a recital and a footnote
+  satisfy "greater than the last one."
+
+  The one workable signal is content, not shape: footnote bodies read
+  as citations (`Regulation (EU) 2016/679 of...`, `OJ C 517,
+  22.12.2021, p. 56.`), while recital bodies read as prose (`The
+  purpose of this Regulation is to...`). A fix would need to: scope
+  detection to only fire between the `Whereas:` line and
+  `HAVE ADOPTED THIS REGULATION:` (recitals only exist in that span),
+  keep the strictly-increasing check as a second filter, and reject a
+  `(N)` match whose following line starts with a citation-like pattern
+  (a capitalised proper-noun-heavy opener, "OJ", "Regulation", a
+  leading number-slash-year, etc.). Meaningfully more involved than
+  the other heading rules in this project — closer to a small
+  classifier than a regex — which is why it's deferred rather than
+  built: the eval set is unlikely to need Recital-level citations, and
+  the four already-solved documents demonstrate the core
+  structure-detection pattern well on their own.
 - UK white paper: a heading whose title word-wraps across two lines in
   the source PDF (e.g. `Annex C: How to respond to this`) only captures
   the first line's text, since heading detection reads one line at a time.
