@@ -8,8 +8,8 @@ Built as an exploration into advanced RAG architecture, focusing on strict groun
 
 ## Status
 
-**Ingestion (chunking) — in progress.** Retrieval, generation, eval, and UI
-not yet started.
+**Ingestion (chunking) — complete.** Retrieval (embeddings + FAISS) — in
+progress. Generation, eval, and UI not yet started.
 
 ## Corpus
 
@@ -34,7 +34,7 @@ yourself" premise of the project.
 ```powershell
 python -m venv venv
 venv\Scripts\activate
-pip install pymupdf
+pip install pymupdf sentence-transformers faiss-cpu
 ```
 
 Place the five source PDFs in `data/raw/` (see table above for links),
@@ -75,6 +75,28 @@ Diagnostic: prints raw PyMuPDF text extraction for a PDF, either the first
 N pages or one page by index. Used throughout development to check how a
 document's headings, tables, and figures actually extract before writing
 chunking rules for them — see "Design decisions" below.
+
+## Building the retrieval index
+
+```powershell
+python src/embed.py
+```
+
+Embeds every chunk in `chunks.jsonl` with `sentence-transformers`
+(`all-MiniLM-L6-v2`, 384-dim) and builds a FAISS `IndexFlatIP` — exact
+search over L2-normalized vectors, which makes inner product equivalent to
+cosine similarity. Writes `data/processed/faiss.index` and
+`chunk_metadata.jsonl` (the chunk records, same row order as the index, so
+a FAISS result position maps back to `doc_id` / `section_label` / `page` /
+`text`). Both outputs are gitignored and regenerable via this one command —
+first run downloads the ~80MB model from Hugging Face.
+
+**Why exact search instead of an approximate FAISS index (IVF, HNSW,
+etc.):** approximate indexing trades a little retrieval accuracy for speed
+at scale — typically justified from hundreds of thousands of vectors
+upward. This corpus is ~1,100 chunks; brute-force exact search runs near
+instantly at that size, so approximate indexing would add complexity to
+solve a problem the project doesn't have.
 
 ## Design decisions
 
@@ -168,5 +190,5 @@ like "ENDNOTES" would produce its own near-empty, citable-looking chunk.
 ```
 data/raw/         source PDFs (committed - all permissively licensed)
 data/processed/   chunked output (gitignored - regenerate via ingest.py)
-src/              ingestion pipeline and diagnostic scripts
+src/              ingestion + retrieval pipeline and diagnostic scripts
 ```
