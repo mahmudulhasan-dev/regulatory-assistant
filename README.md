@@ -1,11 +1,10 @@
 # Regulatory Assistant
 
-A RAG system that answers questions over public AI regulation and standards
-documents, citing the specific section, article, or page each claim comes
-from — and declining to answer when the corpus doesn't support a claim.
+A retrieval-augmented generation (RAG) system that answers questions over public AI 
+regulation and standards documents, citing the specific section, article, or page each 
+claim comes from — and declining to answer when the corpus doesn't support a claim.
 
-Built as a portfolio project to demonstrate retrieval/citation design, not
-just LLM wrapper plumbing.
+Built as an exploration into advanced RAG architecture, focusing on strict grounding and verifiable source attribution.
 
 ## Status
 
@@ -91,7 +90,7 @@ structure is detected:
 | NIST GenAI Profile | Category heading or individual Action ID (e.g. `MP-2.1-001`) |
 | EU AI Act | Article / Chapter / Annex (e.g. `Article 5 Prohibited AI practices`) |
 | UK white paper | Part / Annex / subsection, or individual numbered paragraph (e.g. `46.`) |
-| Blueprint for an AI Bill of Rights | Page number (no structural markers detected yet) |
+| Blueprint for an AI Bill of Rights | Section heading (e.g. `SAFE AND EFFECTIVE SYSTEMS`, or the more specific `WHY THIS PRINCIPLE IS IMPORTANT` where applicable) |
 
 **Headings are matched on whole lines, not searched for within a joined
 block of text.** An early version joined each page's lines into one string
@@ -116,6 +115,12 @@ diagrams: none of their internal labels extract, while the figure's caption
 cleanly as ordinary body text. This is a limitation of the system. It
 cannot cite content that only exists inside an image.
 
+**A detected section with fewer than 5 words of body text is dropped
+rather than emitted as its own chunk.** This mainly catches Table of
+Contents pages, where heading-shaped lines appear back to back with
+almost no real content between them — without the guard, a ToC entry
+like "ENDNOTES" would produce its own near-empty, citable-looking chunk.
+
 **Known open gaps, not yet addressed:**
 - EU AI Act recitals (the ~180 numbered "whereas" clauses before Article 1)
   aren't yet structurally detected — they currently fall into the
@@ -123,8 +128,9 @@ cannot cite content that only exists inside an image.
 - UK white paper: a heading whose title word-wraps across two lines in
   the source PDF (e.g. `Annex C: How to respond to this`) only captures
   the first line's text, since heading detection reads one line at a time.
-- Blueprint for an AI Bill of Rights hasn't been inspected for internal
-  structure yet; it currently cites by page number only.
+- Blueprint for an AI Bill of Rights: the cover page's two-line title
+  ("BLUEPRINT FOR AN AI BILL OF / RIGHTS") gets split the same way —
+  cosmetic, since it's the cover page, not real content.
 - Section-final chunks in the GenAI Profile's Action ID tables can pick up
   a trailing `AI Actor Tasks: ...` tag from the next row's boilerplate.
   Minor noise, not incorrect information.
