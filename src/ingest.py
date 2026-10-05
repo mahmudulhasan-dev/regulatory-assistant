@@ -1,6 +1,4 @@
 """
-src/ingest.py
-
 Ingestion pipeline: PDF -> chunked text with citation metadata.
 
 - Strips repeated header/footer lines (detected by frequency across a
@@ -80,6 +78,7 @@ DOCS = [
             HeadingRule(re.compile(r"(?P<label>\d+\.\d+(?:\.\d+)?)"), "next_line"),
             HeadingRule(re.compile(r"(?P<label>\d+\.)"), "next_line"),
         ],
+        "skip_pages": {4},
     },
     {
         "doc_id": "nist_genai_profile",
@@ -96,6 +95,7 @@ DOCS = [
             HeadingRule(
                 re.compile(r"[A-Z]{2,3}-\d+\.\d+-\d{3}"), "code_only"),
         ],
+        "skip_pages": {4},
     },
     {
         "doc_id": "eu_ai_act",
@@ -106,6 +106,7 @@ DOCS = [
             HeadingRule(re.compile(r"(?P<label>CHAPTER\s+[IVXLC]+)"), "next_line"),
             HeadingRule(re.compile(r"(?P<label>ANNEX\s+[IVXLC]+)"), "next_line"),
         ],
+        "skip_pages": {},
     },
     {
         "doc_id": "uk_ai_whitepaper",
@@ -127,6 +128,7 @@ DOCS = [
             HeadingRule(re.compile(r"\d{1,3}\."), "code_only"),  # split-off paragraph marker
         ],
         "line_splitters": [PARAGRAPH_SPLIT_PATTERN],
+        "skip_pages": {},
     },
     {
         "doc_id": "us_ai_bill_of_rights",
@@ -138,6 +140,7 @@ DOCS = [
                 "code_only",
             ),
         ],
+        "skip_pages": {13},
     },
 ]
 
@@ -207,7 +210,7 @@ def detect_boilerplate_lines(pages: list[str]) -> set[str]:
 
 
 def clean_pages_to_lines(
-    pages: list[str], boilerplate: set[str]
+    pages: list[str], boilerplate: set[str], skip_pages: set[int] = frozenset()
 ) -> list[tuple[str, int]]:
     """Flatten the whole document into (line, page_number) pairs, in
     order, with boilerplate and bare page-number lines removed. This is
@@ -215,7 +218,15 @@ def clean_pages_to_lines(
     are the signal that lets a real heading be told apart from the same
     words appearing mid-sentence."""
     result: list[tuple[str, int]] = []
+    if skip_pages and max(skip_pages, default=0) > len(pages):
+        raise ValueError(
+            f"skip_pages {skip_pages} out of range for a {len(pages)}-page "
+            f"document - check you used 1-based numbers, not page()'s "
+            f"0-based file index"
+        )
     for page_num, page_text in enumerate(pages, start=1):
+        if page_num in skip_pages:
+            continue
         for line in page_text.splitlines():
             stripped = line.strip()
             if not stripped or stripped in boilerplate:
@@ -326,7 +337,7 @@ def chunk_document(doc_config: dict) -> list[Chunk]:
     pdf_path = Path(doc_config["path"])
     pages = extract_pages(pdf_path)
     boilerplate = detect_boilerplate_lines(pages)
-    lines = clean_pages_to_lines(pages, boilerplate)
+    lines = clean_pages_to_lines(pages, boilerplate, doc_config.get("skip_pages", set()))
     lines = split_inline_markers(lines, doc_config.get("line_splitters", []))
 
     headings = detect_headings(lines, doc_config["heading_rules"])
