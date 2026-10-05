@@ -98,6 +98,36 @@ upward. This corpus is ~1,100 chunks; brute-force exact search runs near
 instantly at that size, so approximate indexing would add complexity to
 solve a problem the project doesn't have.
 
+## Retrieval quality notes
+
+Manual testing with `retrieve.py` against a handful of queries showed a
+clear, usable gap between genuinely topical and nonsense queries:
+
+| Query type | Top-5 score range |
+|---|---|
+| Directly answerable (e.g. "what is a prohibited AI practice under the EU AI Act") | 0.70–0.73 |
+| Real topic, wrong jurisdiction (e.g. asking about China in an EU Act query, or Japan in a UK white paper query) | 0.56–0.61 |
+| Genuine nonsense (e.g. "what is the capital of France") | 0.16–0.21 |
+
+The gap between nonsense and anything topical (roughly 0.3–0.4) is a
+usable signal for a score-based decline threshold. However, a score floor
+alone cannot catch the harder case of a *plausible but unsupported*
+question — the wrong-jurisdiction queries above score nearly in the same range
+as a genuine match (0.56–0.61), because the retrieved chunks are
+topically related even though they don't actually answer the question
+asked. Closing that gap will need the generation step itself to judge
+whether retrieved chunks address the specific question, not just whether
+retrieval found *something* similar enough.
+
+**Known retrieval limitation:** a direct query about the EU Act's
+Article 5 ("prohibited AI practices") does not surface Article 5 in the
+top 5 results — cross-referencing Articles that mention "artificial
+intelligence systems" and "safety components" in unrelated amendment
+clauses score higher. This persisted after the ToC and short-chunk fixes
+above, confirming it's a real limit of a small, general-purpose sentence
+embedding model matching plain-English questions against dense,
+cross-referencing legal text — not a pipeline bug.
+
 ## Design decisions
 
 **Chunking is structure-aware per document, not one-size-fits-all.** Each
@@ -122,6 +152,19 @@ Article headings. Anchoring every rule to `fullmatch` against one line —
 never a substring search — rules this out structurally, since a
 cross-reference embedded mid-sentence never *is* the entirety of its own
 line.
+
+**A Table of Contents page is structurally indistinguishable from real
+body headings, once page-number stripping removes the one thing that
+would tell them apart.** A ToC entry (`3.7` alone on a line, its title on
+the next line) matches the same shape as a genuine section heading — the
+only difference is the trailing page number, which boilerplate stripping
+already removes before heading detection runs. This caused one section
+(NIST's `3.7 Fair – with Harmful Bias Managed`) to silently absorb the
+Table of Contents' *next* entry title as its own body text, surfaced via
+an anomalously high-scoring but 5-word chunk at retrieval time. Fixed by
+excluding each document's known ToC page(s) from heading detection
+entirely (`skip_pages` in `DOCS`), rather than trying to distinguish the
+two shapes by pattern alone.
 
 **Header/footer stripping is frequency-based, not hardcoded per document.**
 A line that repeats across a large fraction of a document's own pages is
