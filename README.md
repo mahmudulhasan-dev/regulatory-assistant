@@ -128,6 +128,48 @@ above, confirming it's a real limit of a small, general-purpose sentence
 embedding model matching plain-English questions against dense,
 cross-referencing legal text — not a pipeline bug.
 
+## Generation
+
+```powershell
+pip install google-genai python-dotenv
+```
+
+```
+# .env
+GEMINI_API_KEY=your_key_here
+```
+
+```powershell
+python src/generate.py "your question"
+```
+
+Retrieves the top-k chunks, then applies two layers of "don't answer what
+isn't supported," in order:
+
+1. **A hard score floor (0.3)** on the top retrieved result, set directly
+   from the score-gap data above — below it, the system declines without
+   calling the LLM at all.
+2. **The model itself judges sufficiency** from the retrieved text. This
+   catches the harder case the score floor can't: a topically-related but
+   wrong-jurisdiction question scores in the same range as a genuine
+   match (see "Retrieval quality notes"), so only reading the actual
+   content — not just the similarity score — can catch it.
+
+**Citations are verified, not trusted.** Gemini returns structured JSON
+(`response_schema`) with citations referencing retrieved chunk indices,
+not free-text with inline citations it could fabricate. Every returned
+`chunk_index` is checked against what was actually retrieved before being
+shown; an answer whose citations are all invalid after verification is
+treated as insufficient rather than shown uncited. This is the actual
+enforcement mechanism for the project's core constraint — no hallucinated
+citations — not a prompt instruction alone.
+
+Tested against four cases: a directly answerable question (correctly
+answered and grounded), two topically-similar-but-wrong-jurisdiction
+questions (both correctly declined — by the model's sufficiency judgment,
+not the score floor, since both scored in the "real match" range), and
+one nonsense question (declined by the score floor, no API call made).
+
 ## Design decisions
 
 **Chunking is structure-aware per document, not one-size-fits-all.** Each
