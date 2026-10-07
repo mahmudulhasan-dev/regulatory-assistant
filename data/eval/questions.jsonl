@@ -1,0 +1,20 @@
+{"id": "q1", "question": "What are the four core functions of the NIST AI RMF Core?", "doc_id": "nist_ai_rmf", "answerable": true, "known_miss": false}
+{"id": "q2", "question": "What does NIST mean by AI risk tolerance?", "doc_id": "nist_ai_rmf", "answerable": true, "known_miss": false}
+{"id": "q3", "question": "According to the NIST AI RMF, what is residual risk?", "doc_id": "nist_ai_rmf", "answerable": true, "known_miss": false}
+{"id": "q4", "question": "What are the primary considerations the NIST Generative AI Public Working Group focused on?", "doc_id": "nist_genai_profile", "answerable": true, "known_miss": false}
+{"id": "q5", "question": "What GAI risks are associated with CBRN information or capabilities according to NIST?", "doc_id": "nist_genai_profile", "answerable": true, "known_miss": false}
+{"id": "q6", "question": "What suggested action does NIST give for establishing policies against GAI-generated CSAM?", "doc_id": "nist_genai_profile", "answerable": true, "known_miss": false}
+{"id": "q7", "question": "What is a prohibited AI practice under the EU AI Act?", "doc_id": "eu_ai_act", "answerable": true, "known_miss": true}
+{"id": "q8", "question": "What criteria does the EU AI Act use to designate a general-purpose AI model as having systemic risk?", "doc_id": "eu_ai_act", "answerable": true, "known_miss": false}
+{"id": "q9", "question": "When does the EU AI Act's general prohibitions provision start applying?", "doc_id": "eu_ai_act", "answerable": true, "known_miss": false}
+{"id": "q10", "question": "What are the obligations of deployers of high-risk AI systems under the EU AI Act?", "doc_id": "eu_ai_act", "answerable": true, "known_miss": false}
+{"id": "q11", "question": "What are the UK government's proposed cross-sectoral principles for AI regulation?", "doc_id": "uk_ai_whitepaper", "answerable": true, "known_miss": false}
+{"id": "q12", "question": "How does the UK white paper propose to define artificial intelligence for regulatory purposes?", "doc_id": "uk_ai_whitepaper", "answerable": true, "known_miss": false}
+{"id": "q13", "question": "What central functions does the UK propose to support AI regulators?", "doc_id": "uk_ai_whitepaper", "answerable": true, "known_miss": false}
+{"id": "q14", "question": "What does the Blueprint for an AI Bill of Rights say about safe and effective systems?", "doc_id": "us_ai_bill_of_rights", "answerable": true, "known_miss": false}
+{"id": "q15", "question": "What expectations does the Blueprint set for algorithmic discrimination protections?", "doc_id": "us_ai_bill_of_rights", "answerable": true, "known_miss": false}
+{"id": "q16", "question": "What does the Blueprint recommend regarding human alternatives and fallback for automated systems?", "doc_id": "us_ai_bill_of_rights", "answerable": true, "known_miss": false}
+{"id": "q17", "question": "What does the EU AI Act say about facial recognition regulations in China?", "doc_id": null, "answerable": false, "known_miss": false}
+{"id": "q18", "question": "How does the UK's AI white paper regulate autonomous vehicles in Japan?", "doc_id": null, "answerable": false, "known_miss": false}
+{"id": "q19", "question": "What is the capital of France?", "doc_id": null, "answerable": false, "known_miss": false}
+{"id": "q20", "question": "What penalties does ISO/IEC 42001 impose for non-compliance?", "doc_id": null, "answerable": false, "known_miss": false}
