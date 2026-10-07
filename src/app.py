@@ -18,14 +18,22 @@ st.markdown(
         background-color: #f7f9fb;
         padding: 1.25rem 1.5rem;
         border-radius: 0 6px 6px 0;
-        margin: 0.5rem 0 1.5rem 0;
+        margin: 0.5rem 0 2rem 0;
     }
     .answer-label {
         color: #1e3a5f;
         font-weight: 600;
         font-size: 0.85rem;
         letter-spacing: 0.02em;
-        margin-bottom: 0.5rem;
+        margin-bottom: 0.75rem;
+    }
+    .retrieval-note {
+        border: 1px dashed #c4c9d1;
+        border-radius: 6px;
+        padding: 0.75rem 1rem;
+        margin: 0 0 1.5rem 0;
+        font-size: 0.85rem;
+        color: #5a6472;
     }
     </style>
     """,
@@ -51,16 +59,6 @@ if submitted and query.strip():
 
     top_score = result.retrieved[0]["score"] if result.retrieved else 0.0
 
-    with st.expander("Retrieval detail (top match score, for transparency)"):
-            st.caption(
-                f"Top retrieval score: {top_score:.3f}. Scores below ~0.3 are "
-                f"treated as out-of-corpus; scores in the 0.5-0.6 range can "
-                f"indicate a topically related but unsupported question (see "
-                f"README). This project's eval found some legitimate "
-                f"questions score in this harder middle range when the exact "
-                f"answer is a short definition embedded in longer text."
-            )
-
     if not result.sufficient:
         st.warning(
             "This corpus doesn't contain enough information to answer that question.",
@@ -79,6 +77,21 @@ if submitted and query.strip():
             unsafe_allow_html=True,
         )
 
+    st.markdown(
+        f"""
+        <div class="retrieval-note">
+            Top retrieval score: {top_score:.3f}. Scores below ~0.3 are treated
+            as out-of-corpus; scores in the 0.5-0.6 range can indicate a
+            topically related but unsupported question (see README). This
+            project's eval found some legitimate questions score in this
+            harder middle range when the exact answer is a short definition
+            embedded in longer text.
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    if result.sufficient:
         st.divider()
         st.subheader("Sources")
         seen_indices = []
