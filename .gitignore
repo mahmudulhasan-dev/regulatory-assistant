@@ -3,6 +3,7 @@ venv/
 
 # Derived/build artifacts
 data/processed/
+data/eval/results.json
 
 # Scratch files
 scratch/
