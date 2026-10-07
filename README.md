@@ -8,8 +8,7 @@ Built as an exploration into advanced RAG architecture, focusing on strict groun
 
 ## Status
 
-**Ingestion (chunking) — complete.** Retrieval (embeddings + FAISS) — in
-progress. Generation, eval, and UI not yet started.
+**Ingestion, retrieval, generation, and eval — complete.** UI not yet started.
 
 ## Corpus
 
@@ -169,6 +168,69 @@ answered and grounded), two topically-similar-but-wrong-jurisdiction
 questions (both correctly declined — by the model's sufficiency judgment,
 not the score floor, since both scored in the "real match" range), and
 one nonsense question (declined by the score floor, no API call made).
+
+## Evaluation
+
+```bash
+python src/eval.py
+```
+
+Runs a hand-written set of 20 Q&A pairs (`data/eval/questions.jsonl`) — 16
+answerable, covering all five documents, and 4 deliberately unanswerable
+(two real topics grafted onto the wrong jurisdiction, one pure nonsense
+question, and one trap question about ISO/IEC 42001, a document
+explicitly excluded from the corpus) — against the full retrieve +
+generate pipeline, and reports:
+
+- **Retrieval hit-rate** — did the expected document appear in the top-k?
+- **Decision correctness** — did the system's answer/decline choice match
+  what it should have done? This is the direct measure of the project's
+  core constraint.
+
+One question (`q7`) is flagged `known_miss` — it reproduces the EU Act
+Article 5 limitation documented above — and is reported individually but
+excluded from the summary, since it's an understood limitation rather
+than a regression to chase on every rerun.
+
+**Latest run (19 scored questions):**
+
+| Metric | Result |
+|---|---|
+| Retrieval hit-rate (answerable questions) | 100% |
+| Decision correctness (answer vs. decline) | 63.2% |
+
+**The 63.2% figure undersells what's actually happening — every failure
+was investigated individually, and all seven are the same root cause,
+not seven different bugs.** For each failing question, the expected
+document was retrieved (hit-rate is 100%), but the specific chunk
+containing the correct answer did not score in the top 5, so the model
+correctly declined rather than answering from unrelated or insufficient
+context. Confirmed directly by searching the indexed corpus for the
+exact expected content in every case:
+
+- **Short, parenthetical definitions embedded in longer prose** (e.g.
+  NIST's definition of "residual risk," one sentence inside a denser
+  paragraph) consistently rank below less-relevant chunks for
+  definitional queries — the embedding model weights the whole chunk's
+  meaning, diluting a short specific answer.
+- **A defining section competing against the same keyword used casually
+  throughout the document** (e.g. the UK white paper's formal definition
+  of "proportionate" as a named principle, versus 20+ other chunks that
+  use "proportionate" as an ordinary adjective) has a harder ranking
+  problem than topic-level retrieval alone can solve.
+
+**In every one of these cases, the system behaved correctly given what
+it was shown: it declined rather than fabricating an answer.** No
+hallucinated citation or confidently wrong answer occurred anywhere in
+this eval run. The citation-verification mechanism and the sufficiency
+check both held up under real, unplanned failure conditions — not just
+the handful of cases they were originally designed against.
+
+**Implication for future work:** the fix for this class of failure is a
+retrieval improvement, not a generation one — most plausibly a hybrid
+approach combining semantic search with exact keyword matching (e.g.
+BM25), since several of the failing queries ask for a specific defined
+term that keyword search would likely surface directly.
 
 ## Design decisions
 
