@@ -6,6 +6,16 @@ claim comes from — and declining to answer when the corpus doesn't support a c
 
 Built as an exploration into advanced RAG architecture, focusing on strict grounding and verifiable source attribution.
 
+## Demo
+
+**Answerable question:** the answer, retrieval confidence, and the cited source passage.
+
+<img src="docs/screenshot-answer.png" width="650" alt="Answered question with sources">
+
+**Unsupported question:** the system declines and explains why.
+
+<img src="docs/screenshot-decline.png" width="650" alt="Declined question with explanation">
+
 ## Status
 
 **Complete:** ingestion, retrieval, generation, evaluation, and a minimal
