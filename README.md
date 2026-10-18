@@ -31,21 +31,23 @@ yourself" premise of the project.
 
 ## Setup
 
-```powershell
+The five source PDFs are included in `data/raw/` (links and license
+basis are in the corpus table above), so nothing needs downloading.
+
+```bash
+git clone https://github.com/mahmudulhasan-dev/regulatory-assistant.git
+cd regulatory-assistant
 python -m venv venv
-venv\Scripts\activate
-pip install pymupdf sentence-transformers faiss-cpu
+source venv/Scripts/activate   # Git Bash on Windows; venv/bin/activate on Linux/macOS; venv\Scripts\activate on Windows cmd/PowerShell
+pip install -r requirements.txt
+echo "GEMINI_API_KEY=your_key_here" > .env
+
+python src/ingest.py           # PDFs -> data/processed/chunks.jsonl
+python src/embed.py            # chunks -> FAISS index (downloads ~80MB model on first run)
+streamlit run src/app.py       # launch the interface
 ```
 
-Place the five source PDFs in `data/raw/` (see table above for links),
-named:
-```
-nist_ai_rmf_1.0.pdf
-nist_genai_profile_600-1.pdf
-eu_ai_act_2024_1689.pdf
-uk_ai_whitepaper_2023.pdf
-us_ai_bill_of_rights_2022.pdf
-```
+Requires a Gemini API key (free tier is sufficient).
 
 ## Reproducing the chunked corpus
 
