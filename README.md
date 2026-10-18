@@ -8,7 +8,8 @@ Built as an exploration into advanced RAG architecture, focusing on strict groun
 
 ## Status
 
-**Ingestion, retrieval, generation, and eval — complete.** UI not yet started.
+**Complete:** ingestion, retrieval, generation, evaluation, and a minimal
+Streamlit interface. See "Limitations and future work" for what's next.
 
 ## Corpus
 
