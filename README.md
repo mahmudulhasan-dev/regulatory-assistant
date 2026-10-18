@@ -340,3 +340,26 @@ data/raw/         source PDFs (committed - all permissively licensed)
 data/processed/   chunked output (gitignored - regenerate via ingest.py)
 src/              ingestion + retrieval pipeline and diagnostic scripts
 ```
+
+## Limitations and future work
+
+- **Retrieval ranking is the main weakness, and the eval pinpoints it.**
+  Every failed question in the eval had its correct content in the index
+  but not in the top 5 results (see "Evaluation"). The most promising fix
+  is hybrid retrieval, combining semantic search with keyword matching
+  (BM25), since several failures ask for a specific defined term. Re-running
+  `eval.py` afterwards would give a measured before/after.
+- **The eval is small and coarse.** It has 20 questions, and retrieval
+  hit-rate is measured at the document level, which passes a question whenever
+  the right document appears anywhere in the top 5, even if the specific
+  passage was missed. A chunk-level metric would catch these cases.
+- **Citation faithfulness is not scored.** Verification guarantees every
+  citation points to a chunk that was actually retrieved, but the eval does
+  not check that each cited claim is supported by the text of that chunk.
+- **The score floor (0.3) is tied to one embedding model.** It was set from
+  a small sample of measured queries; changing the model means re-measuring
+  it.
+- **Eval runs are not deterministic.** Each question is a single LLM call,
+  so results can vary slightly between runs.
+- Structure-detection gaps (EU AI Act recitals, headings that wrap across
+  lines, figure content) are listed under "Design decisions."
